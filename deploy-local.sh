@@ -1,14 +1,12 @@
 #!/bin/bash
 
-# Script de despliegue desde GitHub al VPS
-# Uso: ./deploy-from-github.sh [branch]
+# Script de despliegue local al VPS
+# Ejecutar desde ~/scraper-project
 
 set -e
 
-# Variables (ajustar según tu configuración)
-GITHUB_REPO="https://github.com/Mulastone/scraper_project.git"
-BRANCH="${1:-main}"
-PROJECT_DIR="$(pwd)"  # Usar directorio actual
+# Variables
+PROJECT_DIR="$(pwd)"
 DOMAIN="scraper.arasmu.net"
 
 # Colores
@@ -21,9 +19,8 @@ echo_info() { echo -e "${BLUE}ℹ️ $1${NC}"; }
 echo_success() { echo -e "${GREEN}✅ $1${NC}"; }
 echo_warning() { echo -e "${YELLOW}⚠️ $1${NC}"; }
 
-echo_info "🚀 Desplegando Scraper Dashboard desde GitHub..."
-echo_info "Repositorio: $GITHUB_REPO"
-echo_info "Rama: $BRANCH"
+echo_info "🚀 Desplegando Scraper Dashboard..."
+echo_info "Directorio: $PROJECT_DIR"
 
 # 1. Verificar que estamos en el VPS
 if [ ! -f /etc/nginx/nginx.conf ]; then
@@ -31,19 +28,13 @@ if [ ! -f /etc/nginx/nginx.conf ]; then
     exit 1
 fi
 
-# 2. Verificar que estamos en un repositorio Git
-if [ ! -d ".git" ]; then
-    echo "❌ Error: Este script debe ejecutarse desde el directorio del proyecto clonado"
+# 2. Verificar que tenemos el proyecto
+if [ ! -f "streamlit_app.py" ]; then
+    echo "❌ Error: No se encuentra streamlit_app.py. ¿Estás en el directorio correcto?"
     exit 1
 fi
 
-echo_info "🔄 Actualizando código desde GitHub..."
-git fetch origin || echo_warning "No se pudo hacer fetch (sin conexión SSH)"
-git pull origin $BRANCH || echo_warning "No se pudo hacer pull (usando código actual)"
-
-echo_success "Usando código local actualizado"
-
-# 4. Configurar variables de entorno
+# 3. Configurar variables de entorno
 if [ ! -f ".env" ]; then
     echo_warning "Configurando variables de entorno por primera vez..."
     cp .env.template .env
@@ -58,10 +49,10 @@ else
     echo_success "Archivo .env existente mantenido"
 fi
 
-# 5. Cargar variables de entorno
+# 4. Cargar variables de entorno
 source .env
 
-# 6. Verificar containers de Django existentes
+# 5. Verificar containers de Django existentes
 echo_info "🔍 Verificando configuración de Docker..."
 DJANGO_DB=$(docker ps --filter "name=app_db" --format "{{.Names}}" | head -1)
 DJANGO_NETWORK=$(docker network ls --filter "name=app_default" --format "{{.Name}}" | head -1)
@@ -76,7 +67,7 @@ fi
 echo_success "PostgreSQL Django encontrado: $DJANGO_DB"
 echo_success "Network encontrado: $DJANGO_NETWORK"
 
-# 7. Configurar base de datos
+# 6. Configurar base de datos
 echo_info "🗄️ Configurando base de datos..."
 docker exec $DJANGO_DB psql -U ecodisseny_user -c "
 DO \$\$
@@ -122,32 +113,32 @@ GRANT USAGE, SELECT ON SEQUENCE properties_id_seq TO scraper_user;
 
 echo_success "Base de datos configurada"
 
-# 8. Actualizar configuración Docker con nombres reales
+# 7. Actualizar configuración Docker con nombres reales
 echo_info "🔧 Actualizando configuración Docker..."
 sed -i "s/app_db_1/$DJANGO_DB/g" docker-compose.shared-db.yml
 sed -i "s/app_default/$DJANGO_NETWORK/g" docker-compose.shared-db.yml
 
-# 9. Parar containers anteriores si existen
+# 8. Parar containers anteriores si existen
 echo_info "⏹️ Parando containers anteriores..."
 docker-compose -f docker-compose.shared-db.yml down || true
 
-# 10. Construir y lanzar containers
+# 9. Construir y lanzar containers
 echo_info "🐳 Construyendo y lanzando containers..."
 docker-compose -f docker-compose.shared-db.yml build --no-cache
 docker-compose -f docker-compose.shared-db.yml up -d streamlit
 
-# 11. Configurar archivos estáticos
+# 10. Configurar archivos estáticos
 echo_info "📁 Configurando archivos estáticos..."
 mkdir -p /var/www/scraper/static
 cp -r static/* /var/www/scraper/static/ || echo_warning "Archivos estáticos no encontrados"
 
-# 12. Configurar Nginx
+# 11. Configurar Nginx
 echo_info "🌐 Configurando Nginx..."
 cp nginx-scraper.conf /etc/nginx/sites-available/$DOMAIN
 ln -sf /etc/nginx/sites-available/$DOMAIN /etc/nginx/sites-enabled/
 nginx -t && systemctl reload nginx
 
-# 13. SSL (si no existe)
+# 12. SSL (si no existe)
 if [ ! -f "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" ]; then
     echo_info "🔒 Configurando SSL..."
     certbot --nginx -d $DOMAIN --non-interactive --agree-tos --email admin@arasmu.net
@@ -155,17 +146,17 @@ else
     echo_success "SSL ya configurado"
 fi
 
-# 14. Ejecutar scraper inicial
+# 13. Ejecutar scraper inicial
 echo_info "🕷️ Ejecutando scraper inicial..."
 sleep 10
 docker-compose -f docker-compose.shared-db.yml run --rm scraper || echo_warning "Scraper inicial falló, se puede ejecutar después"
 
-# 15. Configurar cron job
+# 14. Configurar cron job
 echo_info "⏰ Configurando cron job..."
 CRON_JOB="0 2 * * * cd $PROJECT_DIR && docker-compose -f docker-compose.shared-db.yml run --rm scraper > /var/log/scraper.log 2>&1"
 (crontab -l 2>/dev/null | grep -v "scraper"; echo "$CRON_JOB") | crontab -
 
-# 16. Verificación final
+# 15. Verificación final
 echo_info "🔍 Verificación final..."
 sleep 5
 
@@ -175,9 +166,9 @@ else
     echo_warning "⚠️ Dashboard puede necesitar unos minutos para estar disponible"
 fi
 
-# 17. Información final
+# 16. Información final
 echo ""
-echo_success "🎉 ¡Despliegue completado desde GitHub!"
+echo_success "🎉 ¡Despliegue completado!"
 echo ""
 echo_info "📊 Información del despliegue:"
 echo "- 🌍 URL: https://$DOMAIN"
@@ -186,8 +177,8 @@ echo "- 🐳 Containers: scraper_streamlit_prod"
 echo "- ⏰ Cron: Cada día a las 2:00 AM"
 echo ""
 echo_info "🔧 Comandos útiles:"
-echo "- Ver logs: docker-compose -f $PROJECT_DIR/docker-compose.shared-db.yml logs -f streamlit"
-echo "- Ejecutar scraper: docker-compose -f $PROJECT_DIR/docker-compose.shared-db.yml run --rm scraper"
-echo "- Actualizar: cd $PROJECT_DIR && git pull && docker-compose -f docker-compose.shared-db.yml build && docker-compose -f docker-compose.shared-db.yml up -d"
+echo "- Ver logs: docker-compose -f docker-compose.shared-db.yml logs -f streamlit"
+echo "- Ejecutar scraper: docker-compose -f docker-compose.shared-db.yml run --rm scraper"
+echo "- Reiniciar: docker-compose -f docker-compose.shared-db.yml restart streamlit"
 echo ""
-echo_success "🔄 Para futuras actualizaciones, simplemente ejecuta: ./deploy-from-github.sh"
+echo_success "🚀 Dashboard listo en: https://$DOMAIN"
