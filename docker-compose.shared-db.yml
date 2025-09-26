@@ -8,14 +8,14 @@ services:
     container_name: scraper_streamlit_prod
     environment:
       # Conectar al PostgreSQL de Django existente (desde /app directorio)
-      - DATABASE_URL=postgresql://scraper_user:${POSTGRES_PASSWORD}@app_db_1:5432/properties_db
+      - DATABASE_URL=postgresql://scraper_user:${POSTGRES_PASSWORD}@ecodisseny_dj_pg_db_1:5432/properties_db
     volumes:
       - ./static:/app/static:ro
     restart: unless-stopped
     ports:
       - "127.0.0.1:8518:8501"
     networks:
-      - app_default  # Network de la app Django
+      - ecodisseny_dj_pg_default  # Network de la app Django
 
   scraper:
     build:
@@ -24,15 +24,15 @@ services:
     container_name: scraper_runner_prod
     environment:
       # Conectar al PostgreSQL de Django existente
-      - DATABASE_URL=postgresql://scraper_user:${POSTGRES_PASSWORD}@app_db_1:5432/properties_db
+      - DATABASE_URL=postgresql://scraper_user:${POSTGRES_PASSWORD}@ecodisseny_dj_pg_db_1:5432/properties_db
     volumes:
       - ./src:/app/src:ro
     restart: "no"
     profiles:
       - manual
     networks:
-      - app_default  # Network de la app Django
+      - ecodisseny_dj_pg_default  # Network de la app Django
 
 networks:
-  app_default:
+  ecodisseny_dj_pg_default:
     external: true  # Usar el network existente de Django

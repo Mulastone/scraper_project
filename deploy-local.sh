@@ -1,7 +1,10 @@
 #!/bin/bash
 
 # Script de despliegue local al VPS
-# Ejecutar desde ~/scraper-project
+# Eje# 5. Verificar containers de Django existentes
+echo_info "🔍 Verificando configuración de Docker..."
+DJANGO_DB=$(docker ps --filter "name=ecodisseny_dj_pg_db" --format "{{.Names}}" | head -1)
+DJANGO_NETWORK=$(docker network ls --filter "name=ecodisseny_dj_pg_default" --format "{{.Name}}" | head -1)r desde ~/scraper-project
 
 set -e
 
@@ -113,10 +116,10 @@ GRANT USAGE, SELECT ON SEQUENCE properties_id_seq TO scraper_user;
 
 echo_success "Base de datos configurada"
 
-# 7. Actualizar configuración Docker con nombres reales
-echo_info "🔧 Actualizando configuración Docker..."
-sed -i "s/app_db_1/$DJANGO_DB/g" docker-compose.shared-db.yml
-sed -i "s/app_default/$DJANGO_NETWORK/g" docker-compose.shared-db.yml
+# 7. Verificar que los nombres coinciden
+echo_info "🔧 Verificando configuración Docker..."
+echo_success "Usando container PostgreSQL: $DJANGO_DB"
+echo_success "Usando network: $DJANGO_NETWORK"
 
 # 8. Parar containers anteriores si existen
 echo_info "⏹️ Parando containers anteriores..."
