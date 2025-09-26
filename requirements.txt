@@ -1,0 +1,20 @@
+# Web scraping
+requests>=2.31.0
+beautifulsoup4>=4.12.2
+lxml>=4.9.3
+
+# Database
+sqlalchemy>=2.0.21
+psycopg2-binary>=2.9.7
+alembic>=1.12.0
+
+# Environment
+python-dotenv>=1.0.0
+
+# Utilities (simplified for compatibility)
+# pandas>=2.1.1
+# numpy>=1.25.2
+
+# Development
+pytest>=7.4.2
+pytest-cov>=4.1.0

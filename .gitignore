@@ -1,0 +1,122 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.env
+.env.local
+.env.prod
+.env.production
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Variables de entorno sensibles
+*.env
+
+# Logs y temporales
+*.log
+logs/
+*.tmp
+*.temp
+/tmp/
+
+# Base de datos local
+*.db
+*.sqlite3
+
+# Backups
+*.backup
+*.bak
+*.sql
+
+# OS específicos
+.DS_Store
+Thumbs.db
+
+# IDEs and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Docker
+*.log
+
+# Database files
+*.db
+*.sqlite3
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Project specific
+antic/
+logs/
+*.backup
+temp/
+tmp/
+
+# PostgreSQL data (if running locally)
+postgres_data/
+
+# Scraped data exports
+exports/
+data_exports/
+*.csv
+*.json
+!requirements.txt
+!docker-compose.yml
+
+# Configuration backups
+*.corrupted
+
+antic
