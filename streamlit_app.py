@@ -16,10 +16,11 @@ st.set_page_config(
 
 @st.cache_data
 def load_data():
-    """Carga los datos desde PostgreSQL"""
+    """Carga los datos desde PostgreSQL y aplica todas las transformaciones"""
     try:
-        # Configuración de la base de datos
-        DATABASE_URL = "postgresql://scraper_user:scraper_password@localhost:5432/properties_db"
+        # Configuración de la base de datos - usar variable de entorno
+        import os
+        DATABASE_URL = os.getenv('DATABASE_URL', "postgresql://scraper_user:scraper_password@localhost:5432/properties_db")
         engine = create_engine(DATABASE_URL)
         
         # Cargar datos con filtros básicos
@@ -67,6 +68,94 @@ def load_data():
             
             # Limpiar datos nulos
             df = df.dropna(subset=['price'])
+            
+            # ===== PROCESAMIENTO DE TIPOS DE PROPIEDAD DENTRO DEL CACHÉ =====
+            def clean_title_cached(title):
+                """Función de mapeo de títulos dentro del caché - v2.0"""
+                if pd.isna(title):
+                    return "Sin especificar"
+                
+                title_clean = str(title).strip()
+                title_lower = title_clean.lower()
+                
+                # TÍTULOS EXACTOS (prioritario)
+                if title_lower in ['piso', 'pis']:
+                    return "Piso"
+                elif title_lower in ['apartamento', 'apartament']:
+                    return "Apartamento"
+                elif title_lower in ['atico', 'àtic', 'ático']:
+                    return "Ático"
+                elif title_lower in ['bajo', 'baix', 'planta baja']:
+                    return "Planta baja"
+                elif title_lower in ['duplex', 'dúplex', 'dùplex']:
+                    return "Duplex"
+                elif title_lower in ['estudio', 'studio']:
+                    return "Estudio"
+                elif title_lower in ['chalet', 'xalet', 'casa']:
+                    return "Casa/Chalet"
+                elif title_lower in ['local comercial', 'oficina', 'despacho', 'despatx']:
+                    return "Local comercial"
+                elif title_lower in ['terreno', 'terreny', 'parcela', 'parcel']:
+                    return "Terreno"
+                elif title_lower in ['garaje', 'garatge', 'parking', 'parquing']:
+                    return "Parking"
+                
+                # TÍTULOS DESCRIPTIVOS 
+                elif ('pis ' in title_lower or title_lower.startswith('pis ') or ' pis ' in title_lower or 
+                    'piso ' in title_lower or title_lower.startswith('piso ') or ' piso ' in title_lower):
+                    return "Piso"
+                elif 'apartament' in title_lower or 'apartment' in title_lower:
+                    return "Apartamento"
+                elif 'estudio' in title_lower or 'studio' in title_lower:
+                    return "Estudio"
+                elif 'duplex' in title_lower or 'dúplex' in title_lower or 'dùplex' in title_lower:
+                    return "Duplex"
+                elif ('atic' in title_lower or 'àtic' in title_lower or 'ático' in title_lower or 
+                      'atico' in title_lower or 'penthouse' in title_lower):
+                    return "Ático"
+                elif 'planta baja' in title_lower or ' bajo ' in title_lower or 'baix' in title_lower:
+                    return "Planta baja"
+                elif ('xalet' in title_lower or 'chalet' in title_lower or 
+                      (('casa ' in title_lower or title_lower.startswith('casa ')) and 'casa' not in ['escasa', 'ocasional'])):
+                    return "Casa/Chalet"
+                elif (('local' in title_lower and ('comercial' in title_lower or 'en venda' in title_lower or 'en venta' in title_lower)) or 
+                      'oficina' in title_lower or 'despacho' in title_lower or 'despatx' in title_lower):
+                    return "Local comercial"
+                elif ('terreny' in title_lower or 'terreno' in title_lower or 'parcel' in title_lower or 
+                      'solar' in title_lower or 'parcela' in title_lower):
+                    return "Terreno"
+                elif ('garatge' in title_lower or 'garaje' in title_lower or 'parking' in title_lower or 
+                      'parquing' in title_lower or 'plaça' in title_lower or 'plaza' in title_lower):
+                    return "Parking"
+                else:
+                    return "Otros"
+            
+            # ===== PROCESAMIENTO DE UBICACIONES DENTRO DEL CACHÉ =====
+            def clean_location_cached(location):
+                """Extrae el nombre principal de la población - dentro del caché"""
+                if pd.isna(location):
+                    return "Desconocida"
+                
+                main_locations = {
+                    'Andorra la Vella': ['andorra la vella', 'andorra_la_vella'],
+                    'Escaldes-Engordany': ['escaldes', 'engordany'],
+                    'Encamp': ['encamp'],
+                    'Ordino': ['ordino'],
+                    'Canillo': ['canillo', 'tarter'],
+                    'La Massana': ['massana'],
+                    'Sant Julia de Loria': ['sant julia', 'julia']
+                }
+                
+                location_lower = location.lower()
+                for main_loc, keywords in main_locations.items():
+                    if any(keyword in location_lower for keyword in keywords):
+                        return main_loc
+                
+                return location
+            
+            # APLICAR TRANSFORMACIONES DENTRO DEL CACHÉ
+            df['tipo_propiedad'] = df['title'].apply(clean_title_cached)
+            df['poblacion'] = df['location'].apply(clean_location_cached)
         
         return df
     except Exception as e:
@@ -162,79 +251,20 @@ def main():
     st.sidebar.markdown("---")
     st.sidebar.header("🔍 Filtros")
     
-    # Función para limpiar nombres de poblaciones
-    def clean_location_name(location):
-        """Extrae el nombre principal de la población"""
-        if pd.isna(location):
-            return "Desconocida"
-        
-        # Patrones para extraer población principal
-        main_locations = {
-            'Andorra la Vella': ['andorra la vella', 'andorra_la_vella'],
-            'Escaldes-Engordany': ['escaldes', 'engordany'],
-            'Encamp': ['encamp'],
-            'Ordino': ['ordino'],
-            'Canillo': ['canillo', 'tarter'],
-            'La Massana': ['massana'],
-            'Sant Julia de Loria': ['sant julia', 'julia']
-        }
-        
-        location_lower = location.lower()
-        for main_loc, keywords in main_locations.items():
-            if any(keyword in location_lower for keyword in keywords):
-                return main_loc
-        
-        return location  # Si no coincide, devolver original
-    
-    # Agregar columna de población limpia
-    df['poblacion'] = df['location'].apply(clean_location_name)
-    
-    # Función para limpiar títulos
-    def clean_title(title):
-        """Limpia y normaliza los títulos de propiedades"""
-        if pd.isna(title):
-            return "Sin especificar"
-        
-        title_clean = str(title).strip()
-        
-        # Mapear títulos similares
-        title_lower = title_clean.lower()
-        if 'piso' in title_lower or 'pis' == title_lower:
-            return "Piso"
-        elif 'apartament' in title_lower:
-            return "Apartamento"
-        elif 'estudio' in title_lower:
-            return "Estudio"
-        elif 'local' in title_lower and 'comercial' in title_lower:
-            return "Local comercial"
-        elif 'duplex' in title_lower:
-            return "Duplex"
-        elif 'atico' in title_lower or 'ático' in title_lower:
-            return "Ático"
-        elif 'planta baja' in title_lower:
-            return "Planta baja"
-        elif 'terreno' in title_lower or 'parcel' in title_lower:
-            return "Terreno"
-        elif 'parquing' in title_lower or 'parking' in title_lower:
-            return "Parking"
-        else:
-            return title_clean
-    
-    # Agregar columna de tipo de propiedad limpio
-    df['tipo_propiedad'] = df['title'].apply(clean_title)
+    # Las columnas 'tipo_propiedad' y 'poblacion' ya están procesadas en load_data()
     
     # Filtro múltiple de tipos de propiedad
     st.sidebar.subheader("🏠 Tipos de Propiedad")
     tipos_disponibles = sorted(df['tipo_propiedad'].unique())
     
-    # Tipos residenciales por defecto
+    # Tipos residenciales por defecto (SOLO propiedades para vivir)
     tipos_residenciales = ['Piso', 'Apartamento', 'Estudio', 'Duplex', 'Planta baja', 'Ático']
     tipos_por_defecto = [tipo for tipo in tipos_residenciales if tipo in tipos_disponibles]
     
     tipos_seleccionados = st.sidebar.multiselect(
         "Selecciona tipos de propiedad:",
         options=tipos_disponibles,
-        default=tipos_por_defecto,  # Solo propiedades residenciales por defecto
+        default=tipos_por_defecto,  # Incluye residenciales + terrenos + parking + locales
         help="Por defecto: propiedades residenciales (Piso, Apartamento, Estudio, Duplex, Planta baja, Ático)"
     )
     

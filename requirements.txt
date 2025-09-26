@@ -11,9 +11,11 @@ alembic>=1.12.0
 # Environment
 python-dotenv>=1.0.0
 
-# Utilities (simplified for compatibility)
-# pandas>=2.1.1
-# numpy>=1.25.2
+# Dashboard
+streamlit>=1.28.0
+pandas>=2.1.1
+numpy>=1.25.2
+plotly>=5.15.0
 
 # Development
 pytest>=7.4.2

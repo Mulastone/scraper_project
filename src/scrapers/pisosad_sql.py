@@ -1,4 +1,5 @@
 import requests
+import re
 from bs4 import BeautifulSoup
 from datetime import datetime
 from ..database.operations import PropertyRepository
@@ -9,65 +10,82 @@ class PisosAdScraper:
     def __init__(self):
         self.base_url = "https://pisos.ad"
         self.website = "pisos.ad"
-        self.start_url = (
-            "https://pisos.ad/venda/tots-els-tipus/tots-subtipus?&minrooms=0&minbanys=0&maxrooms=0&maxbanys=0&minmetres=0&minprice=0&maxprice=0&reference=&caracteristiques=&order=&immo=0&parro=0&promocions=false"
-        )
+        # URLs para diferentes rangos de precio para obtener más variedad
+        self.start_urls = [
+            # Propiedades más accesibles (10k-400k)
+            "https://pisos.ad/venda/tots-els-tipus/tots-subtipus?&minrooms=0&minbanys=0&maxrooms=0&maxbanys=0&minmetres=0&minprice=10000&maxprice=400000&reference=&caracteristiques=&order=&immo=0&parro=0&promocions=false",
+            # Propiedades de rango medio (400k-1M)
+            "https://pisos.ad/venda/tots-els-tipus/tots-subtipus?&minrooms=0&minbanys=0&maxrooms=0&maxbanys=0&minmetres=0&minprice=400000&maxprice=1000000&reference=&caracteristiques=&order=&immo=0&parro=0&promocions=false",
+            # Propiedades de lujo (1M+)
+            "https://pisos.ad/venda/tots-els-tipus/tots-subtipus?&minrooms=0&minbanys=0&maxrooms=0&maxbanys=0&minmetres=0&minprice=1000000&maxprice=0&reference=&caracteristiques=&order=&immo=0&parro=0&promocions=false"
+        ]
 
     def run(self):
         create_tables()
-        page = 1
         total_saved = 0
         
-        while page <= 5:  # Limitar a 5 páginas para testing
-            url = self.start_url + f"&page={page}"
-            print(f"Scraping página {page}: {url}")
+        # Scraper multiple rangos de precio para mayor variedad
+        for url_index, start_url in enumerate(self.start_urls):
+            price_range = ["€10k-€400k", "€400k-€1M", "€1M+"][url_index]
+            print(f"\n🎯 SCRAPING RANGO {price_range}")
+            print("=" * 50)
             
-            resp = requests.get(url, headers={'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36'})
-            if resp.status_code != 200:
-                print(f"Error HTTP {resp.status_code} en página {page}")
-                break
+            page = 1
+            range_saved = 0
+            
+            while page <= 3:  # 3 páginas por rango
+                url = start_url + f"&page={page}"
+                print(f"Scraping {price_range} página {page}")
                 
-            soup = BeautifulSoup(resp.content, "html.parser")
-            
-            # Buscar enlaces de propiedades específicas (no páginas de listado)
-            property_links = soup.find_all("a", href=True)
-            property_urls = []
-            
-            for link in property_links:
-                href = link.get("href", "")
-                # Filtrar solo URLs de propiedades individuales
-                if ("/venda/" in href and 
-                    href not in property_urls and
-                    not href.startswith("http") and  # Evitar enlaces externos
-                    not "wa.me" in href and          # Evitar WhatsApp
-                    not "tel:" in href and           # Evitar teléfonos
-                    not "mailto:" in href and        # Evitar emails
-                    not href.endswith("/tots-subtipus") and
-                    not href.endswith("/venda") and
-                    len(href.split("/")) >= 3 and
-                    href.split("/")[-1].isdigit()):  # Debe terminar en número (ID)
-                    property_urls.append(href)
-            
-            print(f"Encontrados {len(property_urls)} enlaces de propiedades")
-            
-            if not property_urls:
-                print(f"No se encontraron propiedades en página {page}")
-                break
-                
-            for prop_url in property_urls[:3]:  # Limitar a 3 por página para testing
-                try:
-                    data = self.extract_property_from_url(prop_url)
-                    if data:
-                        PropertyRepository.save_property(data)
-                        total_saved += 1
-                        print(f"Guardada propiedad: {data['title'][:50]}...")
-                except Exception as e:
-                    print(f"Error procesando {prop_url}: {e}")
-                    continue
+                resp = requests.get(url, headers={'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36'})
+                if resp.status_code != 200:
+                    print(f"Error HTTP {resp.status_code} en página {page}")
+                    break
                     
-            page += 1
+                soup = BeautifulSoup(resp.content, "html.parser")
+                
+                # Buscar enlaces de propiedades específicas
+                property_links = soup.find_all("a", href=True)
+                property_urls = []
+                
+                for link in property_links:
+                    href = link.get("href", "")
+                    # Filtrar solo URLs de propiedades individuales
+                    if ("/venda/" in href and 
+                        href not in property_urls and
+                        not href.startswith("http") and  # Evitar enlaces externos
+                        not "wa.me" in href and          # Evitar WhatsApp
+                        not "tel:" in href and           # Evitar teléfonos
+                        not "mailto:" in href and        # Evitar emails
+                        not href.endswith("/tots-subtipus") and
+                        not href.endswith("/venda") and
+                        len(href.split("/")) >= 3 and
+                        href.split("/")[-1].isdigit()):  # Debe terminar en número (ID)
+                        property_urls.append(href)
+                
+                print(f"Encontrados {len(property_urls)} enlaces de propiedades en {price_range}")
+                
+                if not property_urls:
+                    print(f"No se encontraron propiedades en página {page}")
+                    break
+                    
+                for prop_url in property_urls[:4]:  # 4 propiedades por página
+                    try:
+                        data = self.extract_property_from_url(prop_url)
+                        if data:
+                            PropertyRepository.save_property(data)
+                            range_saved += 1
+                            total_saved += 1
+                            print(f"Guardada: €{data['price']:,} - {data['title'][:40]}...")
+                    except Exception as e:
+                        print(f"Error procesando {prop_url}: {e}")
+                        continue
+                        
+                page += 1
             
-        print(f"Total propiedades guardadas: {total_saved}")
+            print(f"✅ Rango {price_range}: {range_saved} propiedades guardadas")
+            
+        print(f"\n🎯 TOTAL PROPIEDADES GUARDADAS: {total_saved}")
 
     def extract_property_from_url(self, relative_url):
         """Extrae datos de una propiedad individual"""
@@ -99,28 +117,37 @@ class PisosAdScraper:
                 if len(url_parts) >= 2:
                     title = url_parts[-1].replace("-", " ").title()
             
-            # Extraer precio - buscar en diferentes formatos
+            # Extraer precio - buscar el precio principal en el HTML
             price = 0
             page_text = soup.get_text()
             
-            import re
-            # Buscar patrones de precio
+            # Buscar específicamente el patrón del precio principal
+            # En pisos.ad aparece como: TÍTULO   \rPRECIO €\r \r[precio/m2] €/m2
             price_patterns = [
-                r'([\d.,]+)\s*€',
-                r'€\s*([\d.,]+)',
-                r'(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?)\s*euros?',
+                r'(?:VENDA|venda).*?\r(\d+(?:\.\d{3})*)\s*€\r',  # Patrón específico de pisos.ad
+                r'\r(\d+(?:\.\d{3})*)\s*€\r\s*\r[\d,]+\s*€/m2', # Precio seguido de precio/m2
+                r'(?:PIS|XALET|CASA|TERRENY).*?\r(\d+(?:\.\d{3})*)\s*€\r', # Tipos de propiedad + precio
+                r'^.*?(\d{3}(?:\.\d{3})+)\s*€.*?€/m2',          # Precio grande seguido de precio/m2
             ]
             
             for pattern in price_patterns:
-                price_match = re.search(pattern, page_text, re.IGNORECASE)
-                if price_match:
-                    price_str = price_match.group(1).replace(",", "").replace(".", "")
+                match = re.search(pattern, page_text, re.IGNORECASE | re.MULTILINE)
+                if match:
+                    price_str = match.group(1).replace('.', '')  # Remove thousands separators
                     try:
                         price = int(price_str)
-                        if price > 1000:  # Filtrar precios muy bajos que pueden ser errores
+                        if price > 50000:  # Precio mínimo razonable
                             break
                     except:
                         continue
+            
+            # Si no encuentra con patrones específicos, usar extracción general de la primera parte
+            if price == 0:
+                # Buscar en los primeros 3000 caracteres donde suele estar el precio principal
+                first_part = page_text[:3000]
+                extracted_price = extraer_precio(first_part)
+                if extracted_price and 50000 <= extracted_price <= 50000000:  # Rango razonable
+                    price = int(extracted_price)
             
             # Extraer detalles (habitaciones, baños, superficie)
             rooms = bathrooms = surface = 0

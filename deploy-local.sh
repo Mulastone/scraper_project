@@ -1,10 +1,7 @@
 #!/bin/bash
 
 # Script de despliegue local al VPS
-# Eje# 5. Verificar containers de Django existentes
-echo_info "🔍 Verificando configuración de Docker..."
-DJANGO_DB=$(docker ps --filter "name=ecodisseny_dj_pg_db" --format "{{.Names}}" | head -1)
-DJANGO_NETWORK=$(docker network ls --filter "name=ecodisseny_dj_pg_default" --format "{{.Name}}" | head -1)r desde ~/scraper-project
+# Ejecutar desde ~/scraper_project
 
 set -e
 
@@ -57,8 +54,8 @@ source .env
 
 # 5. Verificar containers de Django existentes
 echo_info "🔍 Verificando configuración de Docker..."
-DJANGO_DB=$(docker ps --filter "name=app_db" --format "{{.Names}}" | head -1)
-DJANGO_NETWORK=$(docker network ls --filter "name=app_default" --format "{{.Name}}" | head -1)
+DJANGO_DB=$(docker ps --filter "name=ecodisseny_dj_pg_db" --format "{{.Names}}" | head -1)
+DJANGO_NETWORK=$(docker network ls --filter "name=ecodisseny_dj_pg_default" --format "{{.Name}}" | head -1)
 
 if [ -z "$DJANGO_DB" ]; then
     echo "❌ Error: Container PostgreSQL de Django no encontrado"
@@ -72,7 +69,7 @@ echo_success "Network encontrado: $DJANGO_NETWORK"
 
 # 6. Configurar base de datos
 echo_info "🗄️ Configurando base de datos..."
-docker exec $DJANGO_DB psql -U ecodisseny_user -c "
+docker exec $DJANGO_DB psql -U ecodisseny_user -d ecodisseny_db -c "
 DO \$\$
 BEGIN
     IF NOT EXISTS (SELECT FROM pg_catalog.pg_user WHERE usename = 'scraper_user') THEN
@@ -88,7 +85,7 @@ GRANT ALL PRIVILEGES ON DATABASE properties_db TO scraper_user;
 " || echo_warning "Usuario/BD pueden ya existir"
 
 # Crear tabla properties
-docker exec $DJANGO_DB psql -U scraper_user -d properties_db -c "
+docker exec $DJANGO_DB psql -U ecodisseny_user -d properties_db -c "
 CREATE TABLE IF NOT EXISTS properties (
     id SERIAL PRIMARY KEY,
     title VARCHAR(255),
