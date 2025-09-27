@@ -5,6 +5,8 @@ from sqlalchemy import create_engine
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
+import time
+import hashlib
 
 # Configuración de la página
 st.set_page_config(
@@ -14,8 +16,11 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-@st.cache_data
-def load_data():
+import hashlib
+import time
+
+# Función que NUNCA usa caché 
+def load_data_force_no_cache():
     """Carga los datos desde PostgreSQL y aplica todas las transformaciones"""
     try:
         # Configuración de la base de datos - usar variable de entorno
@@ -71,7 +76,7 @@ def load_data():
             
             # ===== PROCESAMIENTO DE TIPOS DE PROPIEDAD DENTRO DEL CACHÉ =====
             def clean_title_cached(title):
-                """Función de mapeo de títulos dentro del caché - v2.0"""
+                """Función de mapeo de títulos dentro del caché - v3.0 - Fixed cache invalidation"""
                 if pd.isna(title):
                     return "Sin especificar"
                 
@@ -153,9 +158,16 @@ def load_data():
                 
                 return location
             
-            # APLICAR TRANSFORMACIONES DENTRO DEL CACHÉ
+            # APLICAR TRANSFORMACIONES SIN CACHÉ
+            print(f"🔄 Processing {len(df)} properties - Sept 27, 2025")
             df['tipo_propiedad'] = df['title'].apply(clean_title_cached)
             df['poblacion'] = df['location'].apply(clean_location_cached)
+            
+            # Debug: mostrar algunos ejemplos del mapeo
+            sample_mappings = df[['title', 'tipo_propiedad']].head(10)
+            print("📊 Sample mappings:")
+            for _, row in sample_mappings.iterrows():
+                print(f"  {row['title']} → {row['tipo_propiedad']}")
         
         return df
     except Exception as e:
@@ -165,7 +177,7 @@ def load_data():
 def main():
     # Configurar página con favicon
     st.set_page_config(
-        page_title="Propiedades Andorra - Arasmu",
+        page_title="Propiedades Andorra",
         page_icon="static/favicon.svg",
         layout="wide",
         initial_sidebar_state="expanded"
@@ -228,16 +240,20 @@ def main():
     </style>
     """, unsafe_allow_html=True)
     
-    # Header ultra-compacto en una línea
+    # Header principal
     st.markdown("# 🏠 Propiedades Andorra • 10K-450K€ • Residenciales")
     
     # Info compacta (opcional - se puede ocultar/expandir)
     with st.expander("ℹ️ Info filtros", expanded=False):
         st.write("Propiedades residenciales en Andorra país (sin Pas de la Casa) • Por defecto: Piso, Apartamento, Estudio, Duplex, Planta baja, Ático")
     
-    # Cargar datos
-    with st.spinner("Cargando datos..."):
-        df = load_data()
+    # CLEAR ALL CACHES - Forzar actualización total
+    st.cache_data.clear()
+    
+    # Cargar datos SIN CACHÉ NUNCA
+    current_time = time.time()
+    with st.spinner(f"Cargando datos FRESH (sin caché) - {current_time}..."):
+        df = load_data_force_no_cache()
     
     if df.empty:
         st.error("No se pudieron cargar los datos o no hay propiedades que cumplan los criterios.")

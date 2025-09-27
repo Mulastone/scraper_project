@@ -2,37 +2,37 @@ version: '3.8'
 
 services:
   streamlit:
-    build: 
+    build:
       context: .
       dockerfile: docker/Dockerfile.streamlit
-    container_name: scraper_streamlit_prod
+    container_name: pisos_streamlit_prod
     environment:
       # Conectar al PostgreSQL de Django existente (desde /app directorio)
-      - DATABASE_URL=postgresql://scraper_user:${POSTGRES_PASSWORD}@ecodisseny_dj_pg_db_1:5432/properties_db
+      - DATABASE_URL=postgresql://ecodisseny_user:ecodisseny_password123@ecodisseny_dj_pg_db_1:5432/properties_db
     volumes:
       - ./static:/app/static:ro
     restart: unless-stopped
     ports:
       - "127.0.0.1:8518:8501"
     networks:
-      - ecodisseny_dj_pg_default  # Network de la app Django
+      - ecodisseny_dj_pg_default # Network de la app Django
 
   scraper:
     build:
       context: .
       dockerfile: docker/Dockerfile.scraper
-    container_name: scraper_runner_prod
+    container_name: pisos_scraper_prod
     environment:
       # Conectar al PostgreSQL de Django existente
-      - DATABASE_URL=postgresql://scraper_user:${POSTGRES_PASSWORD}@ecodisseny_dj_pg_db_1:5432/properties_db
+      - DATABASE_URL=postgresql://ecodisseny_user:ecodisseny_password123@ecodisseny_dj_pg_db_1:5432/properties_db
     volumes:
       - ./src:/app/src:ro
     restart: "no"
     profiles:
       - manual
     networks:
-      - ecodisseny_dj_pg_default  # Network de la app Django
+      - ecodisseny_dj_pg_default # Network de la app Django
 
 networks:
   ecodisseny_dj_pg_default:
-    external: true  # Usar el network existente de Django
+    external: true # Usar el network existente de Django

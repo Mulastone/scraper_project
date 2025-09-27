@@ -7,7 +7,7 @@ set -e
 
 # Variables
 PROJECT_DIR="$(pwd)"
-DOMAIN="scraper.arasmu.net"
+DOMAIN="pisos.arasmu.net"
 
 # Colores
 GREEN='\033[0;32m'
