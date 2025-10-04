@@ -299,14 +299,19 @@ python -c "from src.scrapers.runner import run_all_scrapers; run_all_scrapers()"
 
 ## 📄 Licencia
 
-MIT License - Ver `LICENSE` para detalles.
+MIT License © 2025 Axel Rasmussen
+
+Este proyecto está licenciado bajo la Licencia MIT. Ver el archivo [LICENSE](LICENSE) para más detalles.
+
+**Autor**: Axel Rasmussen  
+**Proyecto**: Dashboard Propiedades Andorra  
+**Año**: 2025
 
 ---
 
-**Desarrollado con ❤️ por Arasmu** | **Dashboard Live**: [pisos.arasmu.net](https://pisos.arasmu.net)
+**Desarrollado con ❤️ por Axel Rasmussen (Arasmu)** | **Dashboard Live**: [pisos.arasmu.net](https://pisos.arasmu.net)
 
 **🔄 Última actualización**: Octubre 2025 - Sistema completamente automatizado y optimizado
-| 7claus.com | `claus_sql.py` | 12 | €200k - €600k | ✅ Funcionando |
 
 ### 🎯 pisos.ad - Scraper Premium
 
