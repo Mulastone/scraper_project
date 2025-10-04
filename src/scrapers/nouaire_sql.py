@@ -4,12 +4,76 @@ from datetime import datetime
 import re
 from ..database.operations import PropertyRepository
 from ..database.connection import create_tables
-from ..utils.text_cleaner import limpiar_texto, extraer_precio
+from ..utils.text_cleaner import limpiar_texto, extraer_precio, detectar_pas_de_la_casa, detectar_arinsal, detectar_bordes
 
 class NouaireScraper:
     def __init__(self):
         self.base_url = "https://www.nouaire.com"
         self.website = "www.nouaire.com"
+        
+        # Ubicaciones válidas de Andorra
+        self.andorra_keywords = [
+            'andorra', 'escaldes', 'engordany', 'sant julia', 'encamp', 'canillo', 
+            'massana', 'ordino', 'pas de la casa', 'arinsal', 'bordes', 'envalira',
+            'tarter', 'soldeu', 'incles', 'pal', 'serrat', 'les bons', 'santa coloma',
+            'erts', 'llorts', 'sispony', 'ransol', 'aixovall', 'nagol'
+        ]
+    
+    def is_andorra_location(self, location):
+        """
+        Verifica si una ubicación pertenece a Andorra
+        """
+        if not location or location == 'N/A':
+            return False
+            
+        location_lower = location.lower()
+        
+        # Verificar si contiene alguna palabra clave de Andorra
+        return any(keyword in location_lower for keyword in self.andorra_keywords)
+    
+    def detect_special_locations(self, poblacion, url_inmueble):
+        """
+        Detecta poblaciones especiales de Andorra basándose en la descripción
+        """
+        if not poblacion:
+            return poblacion
+            
+        # Si la población inicial es Encamp, verificar si realmente es Pas de la Casa
+        if 'encamp' in poblacion.lower() or poblacion == 'N/A':
+            print(f"🔍 Verificando descripción para posible Pas de la Casa: {url_inmueble}")
+            descripcion = self.get_property_description(url_inmueble)
+            
+            if descripcion and detectar_pas_de_la_casa(descripcion):
+                print(f"✅ ¡Detectado Pas de la Casa en descripción! Cambiando ubicación de '{poblacion}' a 'Pas de la Casa'")
+                return "Pas de la Casa"
+            else:
+                print(f"❌ No se detectó Pas de la Casa en la descripción")
+        
+        # Verificar si es Arinsal (independiente de la población inicial)
+        elif 'massana' in poblacion.lower():
+            print(f"🔍 Verificando descripción para posible Arinsal: {url_inmueble}")
+            descripcion = self.get_property_description(url_inmueble)
+            
+            if descripcion and detectar_arinsal(descripcion):
+                print(f"✅ ¡Detectado Arinsal en descripción! Cambiando ubicación de '{poblacion}' a 'Arinsal'")
+                return "Arinsal"
+            else:
+                print(f"❌ No se detectó Arinsal en la descripción")
+        
+        # Verificar si es Bordes d'Envalira
+        elif 'canillo' in poblacion.lower() or 'soldeu' in poblacion.lower():
+            print(f"🔍 Verificando descripción para posible Bordes d'Envalira: {url_inmueble}")
+            descripcion = self.get_property_description(url_inmueble)
+            
+            if descripcion and detectar_bordes(descripcion):
+                print(f"✅ ¡Detectado Bordes d'Envalira en descripción! Cambiando ubicación de '{poblacion}' a 'Bordes d\\'Envalira'")
+                return "Bordes d'Envalira"
+            else:
+                print(f"❌ No se detectó Bordes d'Envalira en la descripción")
+        else:
+            print(f"ℹ️ Población '{poblacion}' no necesita verificación")
+            
+        return poblacion
         
     def run(self):
         """
@@ -23,6 +87,7 @@ class NouaireScraper:
             last_page_number = self.get_last_page_number()
             
             urls_unicas = set()
+            all_properties = []  # Lista para acumular todas las propiedades
             
             # Iterar sobre todas las páginas
             for page_num in range(1, last_page_number + 1):
@@ -36,11 +101,12 @@ class NouaireScraper:
                     soup = BeautifulSoup(response.content, 'html.parser')
                     propiedades = soup.find_all('div', class_='row pt10 pb10')
                     
+                    # Extraer datos de propiedades (sin guardar aún)
                     for propiedad in propiedades:
                         try:
                             property_data = self.extract_property_data(propiedad, urls_unicas)
                             if property_data:
-                                PropertyRepository.save_property(property_data)
+                                all_properties.append(property_data)
                                 
                         except Exception as e:
                             print(f"Error al procesar una propiedad: {e}")
@@ -49,41 +115,16 @@ class NouaireScraper:
                 except Exception as e:
                     print(f"Error al procesar página {page_num}: {e}")
                     continue
-                    
-            print(f"Scraping completado. Procesadas {len(urls_unicas)} propiedades únicas.")
             
+            # Guardar todas las propiedades en lote al final
+            if all_properties:
+                saved_count = PropertyRepository.save_properties_batch(all_properties)
+                print(f"Scraping completado. Procesadas {len(urls_unicas)} propiedades únicas, {saved_count} guardadas.")
+            else:
+                print("Scraping completado. No se encontraron propiedades válidas.")
+                    
         except Exception as e:
             print(f"Error en el scraper: {e}")
-    
-    def scrape_page(self, url):
-        """
-        Scraper para una página específica (usado para testing)
-        """
-        try:
-            response = requests.get(url)
-            response.raise_for_status()
-            
-            soup = BeautifulSoup(response.content, 'html.parser')
-            propiedades = soup.find_all('div', class_='row pt10 pb10')
-            
-            urls_unicas = set()
-            scraped_data = []
-            
-            for propiedad in propiedades:
-                try:
-                    property_data = self.extract_property_data(propiedad, urls_unicas)
-                    if property_data:
-                        scraped_data.append(property_data)
-                        
-                except Exception as e:
-                    print(f"Error al procesar una propiedad: {e}")
-                    continue
-            
-            return scraped_data
-            
-        except Exception as e:
-            print(f"Error al scraper la página {url}: {e}")
-            return []
     
     def get_last_page_number(self):
         """
@@ -114,6 +155,53 @@ class NouaireScraper:
         except Exception as e:
             print(f"Error al obtener número de páginas: {e}")
             return 1
+    
+    def get_property_description(self, url_inmueble):
+        """
+        Obtiene la descripción completa de una propiedad específica
+        """
+        try:
+            response = requests.get(url_inmueble, timeout=10)
+            response.raise_for_status()
+            
+            soup = BeautifulSoup(response.content, 'html.parser')
+            
+            # Buscar la descripción en diferentes posibles ubicaciones
+            descripcion = ""
+            
+            # Buscar en div de descripción (común en nouaire)
+            desc_div = soup.find('div', string=re.compile(r'Descripción', re.IGNORECASE))
+            if desc_div:
+                # Buscar el contenido siguiente
+                parent = desc_div.parent
+                if parent:
+                    desc_content = parent.find_next_sibling()
+                    if desc_content:
+                        descripcion = desc_content.get_text(strip=True)
+            
+            # Si no se encontró, buscar por otros selectores comunes
+            if not descripcion:
+                # Buscar en párrafos largos (probable descripción)
+                paragrafos = soup.find_all('p')
+                for p in paragrafos:
+                    texto = p.get_text(strip=True)
+                    if len(texto) > 100:  # Párrafos largos probablemente sean descripción
+                        descripcion += " " + texto
+            
+            # También buscar en divs que contengan mucho texto
+            if not descripcion:
+                divs = soup.find_all('div')
+                for div in divs:
+                    texto = div.get_text(strip=True)
+                    if len(texto) > 200 and 'ubicación' in texto.lower():
+                        descripcion = texto
+                        break
+            
+            return descripcion.strip()
+            
+        except Exception as e:
+            print(f"Error al obtener descripción de {url_inmueble}: {e}")
+            return ""
     
     def extract_property_data(self, propiedad, urls_unicas):
         """
@@ -197,15 +285,29 @@ class NouaireScraper:
             superficie_div = propiedad.find('div', class_='col-xs-6 col-sm-1')
             if superficie_div:
                 superficie_text = superficie_div.get_text(strip=True)
-                superficie_match = re.search(r'(\d+)m', superficie_text)
+                superficie_match = re.search(r'(\d+(?:[.,]\d+)?)m', superficie_text)
                 if superficie_match:
-                    superficie = int(superficie_match.group(1))
+                    superficie_str = superficie_match.group(1).replace(',', '.')
+                    superficie = float(superficie_str)
             
             # Extraer precio
             precio_div = propiedad.find('div', class_='col-xs-6 col-sm-1 text-right')
             if precio_div:
                 precio_text = precio_div.get_text(strip=True)
                 precio = extraer_precio(precio_text)
+            
+            # FILTRO 1: Saltar propiedades con precio mayor a 450,000€
+            if precio > 450000:
+                print(f"⚠️ Propiedad filtrada por precio alto: {precio:,.0f}€ > 450,000€")
+                return None
+            
+            # FILTRO 2: Verificar que la propiedad esté en Andorra ANTES de detectar poblaciones especiales
+            if not self.is_andorra_location(poblacion):
+                print(f"🌍 Propiedad filtrada por estar fuera de Andorra: {poblacion}")
+                return None
+                
+            # FILTRO 3: Detectar poblaciones especiales DESPUÉS de confirmar que está en Andorra
+            poblacion = self.detect_special_locations(poblacion, url_inmueble)
             
             # Extraer habitaciones (div con icono fa-bed visible-xs-inline)
             habitaciones_divs = propiedad.find_all('div', class_='col-xs-6 col-sm-1 strong text-right')
@@ -247,31 +349,7 @@ class NouaireScraper:
         except Exception as e:
             print(f"Error al extraer datos de propiedad: {e}")
             return None
-    
-    def convertir_a_entero(self, valor):
-        """Convierte un valor a entero, retorna 0 si no es posible"""
-        try:
-            # Extraer solo números del texto
-            numeros = re.findall(r'\d+', str(valor))
-            return int(numeros[0]) if numeros else 0
-        except (ValueError, IndexError):
-            return 0
-    
-    def convertir_a_entero_limpiar(self, valor):
-        """Convierte un valor a entero removiendo texto como 'm2', 'm²'"""
-        try:
-            # Remover texto común de superficie
-            valor_limpio = str(valor).replace('m2', '').replace('m²', '').replace('m', '').strip()
-            numeros = re.findall(r'\d+', valor_limpio)
-            return int(numeros[0]) if numeros else 0
-        except (ValueError, IndexError):
-            return 0
-    
-    def modificar_operacion(self, operacion):
-        """Modifica y limpia el texto de operación"""
-        operacion = operacion.lower()
-        if 'venta' in operacion or 'vendre' in operacion:
-            return 'Venta'
-        elif 'alquiler' in operacion or 'lloguer' in operacion:
-            return 'Alquiler'
-        return limpiar_texto(operacion).title()
+
+if __name__ == "__main__":
+    scraper = NouaireScraper()
+    scraper.run()

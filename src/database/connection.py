@@ -29,7 +29,8 @@ def get_connection() -> Session:
     """
     try:
         session = SessionLocal()
-        print("Conexión exitosa a la base de datos PostgreSQL.")
+        # Comentado para evitar spam en batch processing
+        # print("Conexión exitosa a la base de datos PostgreSQL.")
         return session
     except Exception as e:
         print(f"Error al conectar a la base de datos: {e}")

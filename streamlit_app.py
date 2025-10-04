@@ -243,9 +243,22 @@ def main():
     # Header principal
     st.markdown("# 🏠 Propiedades Andorra • 10K-450K€ • Residenciales")
     
+    # ===== LOGO DEL SIDEBAR PRIMERO DE TODO =====
+    try:
+        st.sidebar.image("static/logo_arasmu.svg", width=170)
+    except:
+        st.sidebar.markdown("**🏠 Arasmu**")  # Fallback text
+    
+    # Sistema automático info
+    st.sidebar.markdown("---")
+    st.sidebar.header("🤖 Sistema Automático")
+    st.sidebar.markdown("""
+    ✅ **Scrapers diarios a las 06:00**  
+    """)
+    
     # Info compacta (opcional - se puede ocultar/expandir)
     with st.expander("ℹ️ Info filtros", expanded=False):
-        st.write("Propiedades residenciales en Andorra país (sin Pas de la Casa) • Por defecto: Piso, Apartamento, Estudio, Duplex, Planta baja, Ático")
+        st.write("Propiedades residenciales en Andorra país • Por defecto: excluye Pas de la Casa, Arinsal y Bordes d'Envalira")
     
     # CLEAR ALL CACHES - Forzar actualización total
     st.cache_data.clear()
@@ -259,11 +272,7 @@ def main():
         st.error("No se pudieron cargar los datos o no hay propiedades que cumplan los criterios.")
         return
     
-    # Sidebar con logo y filtros
-    try:
-        st.sidebar.image("static/logo_arasmu.svg", width=170)
-    except:
-        st.sidebar.markdown("**🏠 Arasmu**")  # Fallback text
+    # ===== SECCIÓN DE FILTROS =====
     st.sidebar.markdown("---")
     st.sidebar.header("🔍 Filtros")
     
@@ -284,13 +293,19 @@ def main():
         help="Por defecto: propiedades residenciales (Piso, Apartamento, Estudio, Duplex, Planta baja, Ático)"
     )
     
-    # Filtro múltiple de poblaciones
+    # Filtro múltiple de poblaciones - CORREGIDO: Excluir las 3 especiales por defecto
     st.sidebar.subheader("🏘️ Poblaciones")
     poblaciones_disponibles = sorted(df['poblacion'].unique())
+    
+    # POBLACIONES A EXCLUIR POR DEFECTO
+    poblaciones_especiales = ['Pas de la Casa', 'Arinsal', 'Bordes d\'Envalira']
+    poblaciones_por_defecto = [pob for pob in poblaciones_disponibles if pob not in poblaciones_especiales]
+    
     poblaciones_seleccionadas = st.sidebar.multiselect(
         "Selecciona poblaciones:",
         options=poblaciones_disponibles,
-        default=poblaciones_disponibles  # Por defecto, todas seleccionadas
+        default=poblaciones_por_defecto,  # EXCLUYE Pas de la Casa, Arinsal y Bordes d'Envalira
+        help="Por defecto: todas EXCEPTO Pas de la Casa, Arinsal y Bordes d'Envalira"
     )
     
     # Filtro por website
@@ -505,8 +520,8 @@ def main():
     st.markdown("---")
     st.markdown("""
     <div style="text-align: center; padding: 10px; color: #888; font-size: 0.85em;">
-        <span>🏠 <strong>Arasmu</strong> Dashboard • 📊 Datos en tiempo real • 
-        <a href="https://github.com/arasmu" target="_blank" style="color: #1f77b4; text-decoration: none;">GitHub</a></span>
+        <span>🏠 <strong>Arasmu</strong> Dashboard • 
+        <a href="https://github.com/Mulastone" target="_blank" style="color: #1f77b4; text-decoration: none;">GitHub</a></span>
     </div>
     """, unsafe_allow_html=True)
 

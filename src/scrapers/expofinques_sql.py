@@ -8,13 +8,33 @@ from bs4 import BeautifulSoup
 import re
 from ..database.operations import PropertyRepository
 from ..models.property import Property
-from ..utils.text_cleaner import limpiar_texto, extraer_precio, convertir_a_entero
+from ..utils.text_cleaner import limpiar_texto, extraer_precio, detectar_pas_de_la_casa, detectar_arinsal, detectar_bordes, convertir_a_entero
 
 
 class ExpofinquesScraper:
     def __init__(self):
         self.base_url = "http://www.expofinques.com"
         self.search_url = "http://www.expofinques.com/es/venta"
+        
+        # Ubicaciones válidas de Andorra
+        self.andorra_keywords = [
+            'andorra', 'escaldes', 'engordany', 'sant julia', 'encamp', 'canillo', 
+            'massana', 'ordino', 'pas de la casa', 'arinsal', 'bordes', 'envalira',
+            'tarter', 'soldeu', 'incles', 'pal', 'serrat', 'les bons', 'santa coloma',
+            'erts', 'llorts', 'sispony', 'ransol', 'aixovall', 'nagol'
+        ]
+    
+    def is_andorra_location(self, location):
+        """
+        Verifica si una ubicación pertenece a Andorra
+        """
+        if not location or location == 'N/A':
+            return False
+            
+        location_lower = location.lower()
+        
+        # Verificar si contiene alguna palabra clave de Andorra
+        return any(keyword in location_lower for keyword in self.andorra_keywords)
     
     def scrape_properties(self):
         """Scrape properties from Expofinques"""
@@ -55,6 +75,48 @@ class ExpofinquesScraper:
             print(f"❌ Error scraping Expofinques: {e}")
             return []
     
+    def get_property_description(self, url_inmueble):
+        """
+        Obtiene la descripción completa de una propiedad específica
+        """
+        try:
+            response = requests.get(url_inmueble, timeout=10)
+            response.raise_for_status()
+            
+            soup = BeautifulSoup(response.content, 'html.parser')
+            
+            # Buscar la descripción en diferentes posibles ubicaciones
+            descripcion = ""
+            
+            # Buscar en div de descripción
+            desc_div = soup.find('div', class_='descripcion')
+            if desc_div:
+                descripcion = desc_div.get_text(strip=True)
+            
+            # Si no se encontró, buscar por otros selectores comunes
+            if not descripcion:
+                # Buscar en párrafos largos
+                paragrafos = soup.find_all('p')
+                for p in paragrafos:
+                    texto = p.get_text(strip=True)
+                    if len(texto) > 100:
+                        descripcion += " " + texto
+            
+            # También buscar en divs que contengan mucho texto
+            if not descripcion:
+                divs = soup.find_all('div')
+                for div in divs:
+                    texto = div.get_text(strip=True)
+                    if len(texto) > 200 and ('ubicación' in texto.lower() or 'situado' in texto.lower()):
+                        descripcion = texto
+                        break
+            
+            return descripcion.strip()
+            
+        except Exception as e:
+            print(f"Error al obtener descripción de {url_inmueble}: {e}")
+            return ""
+    
     def extract_property_data(self, row):
         """Extract property data from a table row"""
         try:
@@ -78,9 +140,58 @@ class ExpofinquesScraper:
             # Location from cell 4
             location = limpiar_texto(cells[4].get_text())
             
+            # NUEVA LÓGICA: Verificar descripción para ubicaciones específicas
+            
+            # Verificar Pas de la Casa (Encamp o ubicaciones genéricas)
+            if location and ('encamp' in location.lower() or 'andorra' in location.lower() or location == 'N/A'):
+                print(f"🔍 [EXPOFINQUES] Verificando descripción para posible Pas de la Casa: {url}")
+                descripcion = self.get_property_description(url)
+                
+                if descripcion and detectar_pas_de_la_casa(descripcion):
+                    print(f"✅ [EXPOFINQUES] ¡Detectado Pas de la Casa en descripción! Cambiando ubicación de '{location}' a 'Pas de la Casa'")
+                    location = "Pas de la Casa"
+                else:
+                    print(f"❌ [EXPOFINQUES] No se detectó Pas de la Casa en la descripción")
+            
+            # Verificar Arinsal (La Massana o Arinsal directo)
+            elif location and ('massana' in location.lower() or 'arinsal' in location.lower()):
+                print(f"🔍 [EXPOFINQUES] Verificando descripción para posible Arinsal: {url}")
+                descripcion = self.get_property_description(url)
+                
+                if descripcion and detectar_arinsal(descripcion):
+                    print(f"✅ [EXPOFINQUES] ¡Detectado Arinsal en descripción! Cambiando ubicación de '{location}' a 'Arinsal'")
+                    location = "Arinsal"
+                else:
+                    print(f"❌ [EXPOFINQUES] No se detectó Arinsal en la descripción")
+            
+            # Verificar Bordes d'Envalira (Canillo, Soldeu, etc.)
+            elif location and ('canillo' in location.lower() or 'soldeu' in location.lower() or 
+                             'incles' in location.lower() or 'tarter' in location.lower() or
+                             'bordes' in location.lower()):
+                print(f"🔍 [EXPOFINQUES] Verificando descripción para posible Bordes d'Envalira: {url}")
+                descripcion = self.get_property_description(url)
+                
+                if descripcion and detectar_bordes(descripcion):
+                    print(f"✅ [EXPOFINQUES] ¡Detectado Bordes d'Envalira en descripción! Cambiando ubicación de '{location}' a 'Bordes d\\'Envalira'")
+                    location = "Bordes d'Envalira"
+                else:
+                    print(f"❌ [EXPOFINQUES] No se detectó Bordes d'Envalira en la descripción")
+            else:
+                print(f"ℹ️ [EXPOFINQUES] Ubicación '{location}' no necesita verificación")
+            
             # Price from cell 5
             price_text = cells[5].get_text()
             price = extraer_precio(price_text)
+            
+            # FILTRO 1: Saltar propiedades con precio mayor a 450,000€
+            if price > 450000:
+                print(f"⚠️ [EXPOFINQUES] Propiedad filtrada por precio alto: {price:,.0f}€ > 450,000€")
+                return None
+            
+            # FILTRO 2: Verificar que la propiedad esté en Andorra ANTES de detectar poblaciones especiales
+            if not self.is_andorra_location(location):
+                print(f"🌍 [EXPOFINQUES] Propiedad filtrada por estar fuera de Andorra: {location}")
+                return None
             
             # Surface from cell 6
             surface_text = cells[6].get_text()

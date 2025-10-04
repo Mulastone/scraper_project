@@ -1,53 +1,311 @@
-# 🏠 Dashboard Pisos Andorra
+# 🏠 Dashboard Propiedades Andorra - Sistema Automatizado
 
-Dashboard interactivo para visualización de propiedades inmobiliarias en Andorra, con scrapers automatizados, base de datos PostgreSQL y interfaz web Streamlit.
+Dashboard interactivo para visualización de propiedades inmobiliarias en Andorra con scrapers automatizados, sistema de vigencia, filtrado optimizado y interfaz web moderna.
 
 ![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
 
-**🌍 Demo Live**: [pisos.arasmu.net](https://pisos.arasmu.net) | **IP Direct**: [161.97.147.142/pisos/](http://161.97.147.142/pisos/)
+**🌍 Demo Live**: [pisos.arasmu.net](https://pisos.arasmu.net)
 
-## 🎯 Estado Actual (Sep 2025)
+## 🎯 Estado Actual (Octubre 2025)
 
-✅ **Dashboard Completamente Funcional**  
-✅ **1,683 Propiedades Cargadas**  
-✅ **5 Scrapers Activos**  
-✅ **Filtros Interactivos**  
-✅ **Visualizaciones con Plotly**  
-✅ **SSL & Domain pisos.arasmu.net**
+✅ **Sistema Completamente Automatizado**  
+✅ **339 Propiedades Activas** (solo Andorra)  
+✅ **4 Scrapers Optimizados** con filtrado inteligente  
+✅ **Sistema de Vigencia** (3 días)  
+✅ **Filtros por Ubicaciones Especiales** (Pas de la Casa, Arinsal, Bordes d'Envalira)  
+✅ **Batch Processing Optimizado**  
+✅ **SSL & Dominio pisos.arasmu.net**  
+✅ **Cron Diario Automático** (06:00)
 
 ## 🏗️ Arquitectura del Sistema
 
 ```
-pisos-project/
+scraper-project/
 ├── 🗄️ Base de Datos (PostgreSQL)
-│   └── properties_db (1,683 propiedades)
-├── 🕷️ Scrapers Python
-│   ├── pisosad_sql.py        # 35 propiedades (€127k-€9.5M)
-│   ├── finquesmarques_sql.py # 59 propiedades  
-│   ├── nouaire_sql.py        # 1,521 propiedades
-│   ├── expofinques_sql.py    # 56 propiedades
-│   └── claus_sql.py         # 12 propiedades
+│   └── properties_db (339 propiedades filtradas)
+├── 🕷️ Scrapers Python Optimizados
+│   ├── pisosad_sql.py        # Scraper pisos.ad (€10k-€450k)
+│   ├── nouaire_sql.py        # Scraper principal (1,500+ URLs)
+│   ├── expofinques_sql.py    # Scraper expofinques
+│   └── claus_sql.py         # Scraper 7claus
 ├── 📊 Dashboard (Streamlit)
-│   └── streamlit_app.py     # Interfaz web interactiva
+│   └── streamlit_app.py     # Interfaz web con logo ARASMU
 ├── 🐳 Docker Containers
-│   ├── pisos_streamlit_prod # Dashboard web
-│   ├── pisos_scraper_prod   # Scrapers automáticos  
-│   └── ecodisseny_dj_pg_db_1 # Base datos PostgreSQL
+│   ├── pisos_streamlit_prod # Dashboard web (puerto 8501)
+│   └── ecodisseny_dj_pg_db_1 # PostgreSQL
+├── 🤖 Automatización
+│   ├── run_all_scrapers.sh  # Script principal
+│   ├── setup_cron.sh        # Cron diario 06:00
+│   └── test_vigencia.sh     # Tests sistema vigencia
 └── 🌐 Nginx Proxy
-    └── Serve en /pisos/ con SSL
+    └── SSL con Let's Encrypt
 ```
 
-## 🎯 Scrapers Detallados
+## 🎯 Scrapers Optimizados
 
-| Sitio Web | Scraper | Propiedades | Rango Precios | Estado |
-|-----------|---------|-------------|---------------|--------|
-| **pisos.ad** | `pisosad_sql.py` | **35** | €127k - €9.5M | ✅ **100% Funcional** |
-| finquesmarca.com | `finquesmarques_sql.py` | 59 | €180k - €850k | ✅ Funcionando |
-| nouaire.com | `nouaire_sql.py` | 1,521 | €85k - €2.1M | ✅ Funcionando |
-| expofinques.com | `expofinques_sql.py` | 56 | €150k - €1.2M | ✅ Funcionando |
+| Sitio Web | Scraper | Estado | Filtros Aplicados |
+|-----------|---------|--------|-------------------|
+| **pisos.ad** | `pisosad_sql.py` | ✅ **100% Funcional** | Precio €10k-€450k + Andorra |
+| **nouaire.com** | `nouaire_sql.py` | ✅ Funcionando | Detecta ubicaciones especiales |
+| **expofinques.com** | `expofinques_sql.py` | ✅ Funcionando | Filtro Andorra + precio |
+| **7claus.com** | `claus_sql.py` | ✅ Funcionando | Validación ubicación |
+
+### 🎯 Filtrado Inteligente Implementado
+
+**Sistema de 3 Etapas:**
+1. **Filtro Precio**: Solo propiedades ≤ €450,000
+2. **Filtro Andorra**: Validación país con `is_andorra_location()`
+3. **Detección Especial**: Pas de la Casa, Arinsal, Bordes d'Envalira
+
+**Palabras clave Andorra:**
+```python
+andorra_keywords = [
+    'andorra', 'escaldes', 'engordany', 'encamp', 'ordino', 
+    'canillo', 'massana', 'sant julia', 'loria', 'la vella'
+]
+```
+
+## 🚀 Instalación y Configuración
+
+### Prerequisitos
+- Docker & Docker Compose
+- PostgreSQL (contenedor compartido)
+- Nginx con SSL
+- Python 3.12+
+
+### 🐳 Configuración Docker
+
+```bash
+# 1. Construir imagen Streamlit
+docker build -f docker/Dockerfile.streamlit -t scraper_project-streamlit .
+
+# 2. Ejecutar contenedor con network host
+docker run -d --name pisos_streamlit_prod \
+  --network host \
+  -e DATABASE_URL="postgresql://scraper_user:scraper_password@localhost:5432/properties_db" \
+  scraper_project-streamlit
+```
+
+### 🗄️ Base de Datos
+
+```sql
+-- Esquema optimizado con sistema de vigencia
+CREATE TABLE properties (
+    id SERIAL PRIMARY KEY,
+    price INTEGER NOT NULL,
+    rooms INTEGER,
+    bathrooms INTEGER,
+    surface REAL,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    vigencia_date DATE DEFAULT CURRENT_DATE,  -- NUEVO: Sistema vigencia
+    website VARCHAR(255) NOT NULL,
+    title TEXT NOT NULL,
+    reference VARCHAR(100),
+    operation VARCHAR(50) DEFAULT 'venta',
+    location VARCHAR(255),
+    address TEXT,
+    url TEXT UNIQUE NOT NULL
+);
+
+-- Índices para rendimiento
+CREATE INDEX idx_properties_vigencia ON properties(vigencia_date);
+CREATE INDEX idx_properties_price ON properties(price);
+CREATE INDEX idx_properties_location ON properties(location);
+```
+
+### 🤖 Automatización con Cron
+
+```bash
+# Configurar cron diario
+chmod +x setup_cron.sh
+./setup_cron.sh
+
+# Cron programado: 0 6 * * * (06:00 diario)
+crontab -l
+```
+
+## 📊 Dashboard Streamlit
+
+### Características Principales
+
+- **🎨 Logo ARASMU** en parte superior del sidebar
+- **🏘️ Filtro Poblaciones Invertido**: Por defecto excluye Pas de la Casa, Arinsal, Bordes d'Envalira
+- **💰 Rango de Precios**: €10,000 - €450,000
+- **🏠 Tipos de Propiedad**: Residenciales por defecto
+- **📱 Responsive Design**
+
+### Filtros Implementados
+
+```python
+# Tipos residenciales por defecto
+tipos_residenciales = ['Piso', 'Apartamento', 'Estudio', 'Duplex', 'Planta baja', 'Ático']
+
+# Poblaciones excluidas por defecto
+poblaciones_especiales = ['Pas de la Casa', 'Arinsal', 'Bordes d\'Envalira']
+poblaciones_por_defecto = [pob for pob in poblaciones_disponibles 
+                          if pob not in poblaciones_especiales]
+```
+
+## 🌐 Configuración Nginx
+
+```nginx
+# /etc/nginx/sites-enabled/pisos.arasmu.net
+server {
+    server_name pisos.arasmu.net;
+    
+    location / {
+        proxy_pass http://127.0.0.1:8501/;  # Puerto actualizado
+        
+        # Headers para Streamlit
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # Timeouts
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 300s;
+        
+        proxy_buffering off;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    listen 443 ssl;
+    ssl_certificate /etc/letsencrypt/live/pisos.arasmu.net/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/pisos.arasmu.net/privkey.pem;
+}
+```
+
+## 🔧 Scripts de Gestión
+
+### Scripts Principales
+
+```bash
+# Ejecutar todos los scrapers
+./run_all_scrapers.sh
+
+# Configurar cron automático
+./setup_cron.sh
+
+# Test sistema de vigencia
+./test_vigencia.sh
+
+# Limpiar base de datos
+python clear_database.py
+```
+
+### Comandos Docker Útiles
+
+```bash
+# Estado de contenedores
+docker ps | grep pisos
+
+# Logs en tiempo real
+docker logs -f pisos_streamlit_prod
+
+# Recrear contenedor Streamlit
+docker stop pisos_streamlit_prod && docker rm pisos_streamlit_prod
+docker run -d --name pisos_streamlit_prod --network host \
+  -e DATABASE_URL="postgresql://scraper_user:scraper_password@localhost:5432/properties_db" \
+  scraper_project-streamlit
+
+# Reiniciar nginx
+sudo systemctl reload nginx
+```
+
+## 🔍 Sistema de Vigencia
+
+**Funcionamiento:**
+- Cada propiedad tiene `vigencia_date = CURRENT_DATE`
+- Scrapers actualizan vigencia si URL ya existe
+- Propiedades > 3 días se marcan como obsoletas
+- Batch processing optimizado para performance
+
+```python
+# Actualización de vigencia
+cursor.execute("""
+    UPDATE properties 
+    SET vigencia_date = CURRENT_DATE 
+    WHERE url = %s
+""", (url,))
+```
+
+## 🛠️ Solución de Problemas
+
+### Problemas Comunes
+
+1. **Error credenciales PostgreSQL**
+   ```bash
+   # Resetear contraseña usuario scraper_user
+   docker exec ecodisseny_dj_pg_db_1 psql -U ecodisseny_user -d ecodisseny_db \
+     -c "ALTER USER scraper_user PASSWORD 'scraper_password';"
+   ```
+
+2. **Nginx 502 Bad Gateway**
+   ```bash
+   # Verificar puerto correcto en nginx config
+   sudo sed -i 's|8518|8501|g' /etc/nginx/sites-enabled/pisos.arasmu.net
+   sudo systemctl reload nginx
+   ```
+
+3. **Scrapers fallan con variable scope error**
+   ```bash
+   # Verificar que variables estén declaradas antes de uso
+   # En pisosad_sql.py: extraer ubicación ANTES de filtros
+   ```
+
+### Debug Commands
+
+```bash
+# Test conexión BD desde contenedor
+docker exec pisos_streamlit_prod python -c "
+from sqlalchemy import create_engine, text
+engine = create_engine('postgresql://scraper_user:scraper_password@localhost:5432/properties_db')
+with engine.connect() as conn:
+    result = conn.execute(text('SELECT count(*) FROM properties'))
+    print(f'Propiedades: {result.fetchone()[0]}')
+"
+
+# Verificar scrapers
+python -c "from src.scrapers.runner import run_all_scrapers; run_all_scrapers()"
+```
+
+## 📈 Estadísticas del Sistema
+
+**Base de Datos Optimizada:**
+- **Antes**: 696 propiedades (muchas fuera de Andorra)
+- **Después**: 339 propiedades (100% Andorra)
+- **Filtradas**: 371 propiedades no válidas eliminadas
+
+**Performance:**
+- **Tiempo scraping**: ~7-8 minutos para todos los scrapers
+- **Batch processing**: Inserción optimizada por lotes
+- **Sistema vigencia**: Actualizaciones eficientes
+
+## 🤝 Contribución
+
+1. Fork del proyecto
+2. Crear rama feature (`git checkout -b feature/nuevo-filtro`)
+3. Commit cambios (`git commit -m 'Add: filtro por superficie'`)
+4. Push (`git push origin feature/nuevo-filtro`)
+5. Crear Pull Request
+
+## 📄 Licencia
+
+MIT License - Ver `LICENSE` para detalles.
+
+---
+
+**Desarrollado con ❤️ por Arasmu** | **Dashboard Live**: [pisos.arasmu.net](https://pisos.arasmu.net)
+
+**🔄 Última actualización**: Octubre 2025 - Sistema completamente automatizado y optimizado
 | 7claus.com | `claus_sql.py` | 12 | €200k - €600k | ✅ Funcionando |
 
 ### 🎯 pisos.ad - Scraper Premium

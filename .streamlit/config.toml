@@ -4,7 +4,13 @@ address = "0.0.0.0"
 headless = true
 enableCORS = false
 enableXsrfProtection = false
-baseUrlPath = "/pisos"
+allowRunOnSave = true
+baseUrlPath = ""
 
 [browser]
 gatherUsageStats = false
+serverAddress = "pisos.arasmu.net"
+serverPort = 443
+
+[global]
+developmentMode = false

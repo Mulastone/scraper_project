@@ -48,6 +48,9 @@ logs/
 *.db
 *.sqlite3
 
+# Archivos antiguos y no utilizados
+antic/
+
 # Backups
 *.backup
 *.bak
