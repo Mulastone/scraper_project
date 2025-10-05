@@ -3,6 +3,7 @@ from .nouaire_sql import NouaireScraper
 from .expofinques_sql import ExpofinquesScraper
 from .claus_sql import ClausScraper
 from .pisosad_sql import PisosAdScraper
+from .pisoscom_sql import PisoscomScraper
 
 def run_all_scrapers():
     """
@@ -13,7 +14,8 @@ def run_all_scrapers():
         NouaireScraper(),
         ExpofinquesScraper(),
         ClausScraper(),
-        PisosAdScraper()
+        PisosAdScraper(),
+        PisoscomScraper()
     ]
     
     print("Iniciando scrapers...")

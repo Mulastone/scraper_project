@@ -8,7 +8,7 @@ echo "=================================================="
 # Variables de configuración
 DOCKER_NETWORK="ecodisseny_dj_pg_default"
 DATABASE_URL="postgresql://ecodisseny_user:ecodisseny_password123@ecodisseny_dj_pg_db_1:5432/properties_db"
-DOCKER_IMAGE="scraper_project_scraper"
+DOCKER_IMAGE="scraper_project-streamlit"
 PROJECT_DIR="/root/scraper_project"
 
 start_time=$(date +%s)
